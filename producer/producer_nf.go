@@ -158,12 +158,8 @@ func ConvertNetFlowDataSet(version uint16, baseTime uint32, uptime uint32, recor
 		switch df.Type {
 
 		// Statistics
-		case netflow.NFV9_FIELD_IN_BYTES:
-			DecodeUNumber(v, &(flowMessage.Bytes))
 		case netflow.NFV9_FIELD_IN_PKTS:
 			DecodeUNumber(v, &(flowMessage.Packets))
-		case netflow.NFV9_FIELD_OUT_BYTES:
-			DecodeUNumber(v, &(flowMessage.Bytes))
 		case netflow.NFV9_FIELD_OUT_PKTS:
 			DecodeUNumber(v, &(flowMessage.Packets))
 
@@ -175,26 +171,8 @@ func ConvertNetFlowDataSet(version uint16, baseTime uint32, uptime uint32, recor
 		case netflow.NFV9_FIELD_PROTOCOL:
 			DecodeUNumber(v, &(flowMessage.Proto))
 
-		// Network
-		case netflow.NFV9_FIELD_SRC_AS:
-			DecodeUNumber(v, &(flowMessage.SrcAS))
-		case netflow.NFV9_FIELD_DST_AS:
-			DecodeUNumber(v, &(flowMessage.DstAS))
-
-		// Interfaces
-		case netflow.NFV9_FIELD_INPUT_SNMP:
-			DecodeUNumber(v, &(flowMessage.InIf))
-		case netflow.NFV9_FIELD_OUTPUT_SNMP:
-			DecodeUNumber(v, &(flowMessage.OutIf))
-
-		case netflow.NFV9_FIELD_FORWARDING_STATUS:
-			DecodeUNumber(v, &(flowMessage.ForwardingStatus))
 		case netflow.NFV9_FIELD_SRC_TOS:
 			DecodeUNumber(v, &(flowMessage.IPTos))
-		case netflow.NFV9_FIELD_TCP_FLAGS:
-			DecodeUNumber(v, &(flowMessage.TCPFlags))
-		case netflow.NFV9_FIELD_MIN_TTL:
-			DecodeUNumber(v, &(flowMessage.IPTTL))
 
 		// IP
 		case netflow.NFV9_FIELD_IPV4_SRC_ADDR:
@@ -204,85 +182,12 @@ func ConvertNetFlowDataSet(version uint16, baseTime uint32, uptime uint32, recor
 			flowMessage.DstAddr = v
 			flowMessage.Etype = 0x800
 
-		case netflow.NFV9_FIELD_SRC_MASK:
-			DecodeUNumber(v, &(flowMessage.SrcNet))
-		case netflow.NFV9_FIELD_DST_MASK:
-			DecodeUNumber(v, &(flowMessage.DstNet))
-
 		case netflow.NFV9_FIELD_IPV6_SRC_ADDR:
 			flowMessage.SrcAddr = v
 			flowMessage.Etype = 0x86dd
 		case netflow.NFV9_FIELD_IPV6_DST_ADDR:
 			flowMessage.DstAddr = v
 			flowMessage.Etype = 0x86dd
-
-		case netflow.NFV9_FIELD_IPV6_SRC_MASK:
-			DecodeUNumber(v, &(flowMessage.SrcNet))
-		case netflow.NFV9_FIELD_IPV6_DST_MASK:
-			DecodeUNumber(v, &(flowMessage.DstNet))
-
-		case netflow.NFV9_FIELD_IPV4_NEXT_HOP:
-			flowMessage.NextHop = v
-		case netflow.NFV9_FIELD_BGP_IPV4_NEXT_HOP:
-			flowMessage.NextHop = v
-
-		case netflow.NFV9_FIELD_IPV6_NEXT_HOP:
-			flowMessage.NextHop = v
-		case netflow.NFV9_FIELD_BGP_IPV6_NEXT_HOP:
-			flowMessage.NextHop = v
-
-		// ICMP
-		case netflow.NFV9_FIELD_ICMP_TYPE:
-			var icmpTypeCode uint16
-			DecodeUNumber(v, &icmpTypeCode)
-			flowMessage.IcmpType = uint32(icmpTypeCode >> 8)
-			flowMessage.IcmpCode = uint32(icmpTypeCode & 0xff)
-		case netflow.IPFIX_FIELD_icmpTypeCodeIPv6:
-			var icmpTypeCode uint16
-			DecodeUNumber(v, &icmpTypeCode)
-			flowMessage.IcmpType = uint32(icmpTypeCode >> 8)
-			flowMessage.IcmpCode = uint32(icmpTypeCode & 0xff)
-		case netflow.IPFIX_FIELD_icmpTypeIPv4:
-			DecodeUNumber(v, &(flowMessage.IcmpType))
-		case netflow.IPFIX_FIELD_icmpTypeIPv6:
-			DecodeUNumber(v, &(flowMessage.IcmpType))
-		case netflow.IPFIX_FIELD_icmpCodeIPv4:
-			DecodeUNumber(v, &(flowMessage.IcmpCode))
-		case netflow.IPFIX_FIELD_icmpCodeIPv6:
-			DecodeUNumber(v, &(flowMessage.IcmpCode))
-
-		// Mac
-		case netflow.NFV9_FIELD_IN_SRC_MAC:
-			DecodeUNumber(v, &(flowMessage.SrcMac))
-		case netflow.NFV9_FIELD_OUT_DST_MAC:
-			DecodeUNumber(v, &(flowMessage.DstMac))
-
-		case netflow.NFV9_FIELD_SRC_VLAN:
-			DecodeUNumber(v, &(flowMessage.VlanId))
-			DecodeUNumber(v, &(flowMessage.SrcVlan))
-		case netflow.NFV9_FIELD_DST_VLAN:
-			DecodeUNumber(v, &(flowMessage.DstVlan))
-
-		case netflow.IPFIX_FIELD_ingressVRFID:
-			DecodeUNumber(v, &(flowMessage.IngressVrfID))
-		case netflow.IPFIX_FIELD_egressVRFID:
-			DecodeUNumber(v, &(flowMessage.EgressVrfID))
-
-		case netflow.NFV9_FIELD_IPV4_IDENT:
-			DecodeUNumber(v, &(flowMessage.FragmentId))
-		case netflow.NFV9_FIELD_FRAGMENT_OFFSET:
-			var fragOffset uint32
-			DecodeUNumber(v, &fragOffset)
-			flowMessage.FragmentOffset |= fragOffset
-		case netflow.IPFIX_FIELD_fragmentFlags:
-			var ipFlags uint32
-			DecodeUNumber(v, &ipFlags)
-			flowMessage.FragmentOffset |= ipFlags
-		case netflow.NFV9_FIELD_IPV6_FLOW_LABEL:
-			DecodeUNumber(v, &(flowMessage.IPv6FlowLabel))
-
-		case netflow.IPFIX_FIELD_biflowDirection:
-			DecodeUNumber(v, &(flowMessage.BiFlowDirection))
 
 		case netflow.NFV9_FIELD_DIRECTION:
 			DecodeUNumber(v, &(flowMessage.FlowDirection))
@@ -450,7 +355,6 @@ func ProcessMessageNetFlow(msgDec interface{}, samplingRateSys SamplingRateSyste
 		}
 		for _, fmsg := range flowMessageSet {
 			fmsg.SequenceNum = seqnum
-			fmsg.SamplingRate = uint64(samplingRate)
 		}
 	case netflow.IPFIXPacket:
 		dataFlowSet, _, _, optionDataFlowSet := SplitIPFIXSets(msgDecConv)
@@ -471,7 +375,6 @@ func ProcessMessageNetFlow(msgDec interface{}, samplingRateSys SamplingRateSyste
 		}
 		for _, fmsg := range flowMessageSet {
 			fmsg.SequenceNum = seqnum
-			fmsg.SamplingRate = uint64(samplingRate)
 		}
 	default:
 		return flowMessageSet, errors.New("Bad NetFlow/IPFIX version")

@@ -39,31 +39,15 @@ func ParseSampledHeaderConfig(flowMessage *flowmessage.FlowMessage, sampledHeade
 	data := (*sampledHeader).HeaderData
 	switch (*sampledHeader).Protocol {
 	case 1: // Ethernet
-		var hasPPP bool
-		var pppAddressControl uint16
-		var hasMPLS bool
-		var countMpls uint32
-		var firstLabelMpls uint32
-		var firstTtlMpls uint8
-		var secondLabelMpls uint32
-		var secondTtlMpls uint8
-		var thirdLabelMpls uint32
-		var thirdTtlMpls uint8
-		var lastLabelMpls uint32
-		var lastTtlMpls uint8
 
 		var hasEncap bool
 		var nextHeader byte
 		var nextHeaderEncap byte
-		var tcpflags byte
 		srcIP := net.IP{}
 		dstIP := net.IP{}
 		srcIPEncap := net.IP{}
 		dstIPEncap := net.IP{}
 		offset := 14
-
-		var srcMac uint64
-		var dstMac uint64
 
 		var tos byte
 		var ttl byte
@@ -83,61 +67,10 @@ func ParseSampledHeaderConfig(flowMessage *flowmessage.FlowMessage, sampledHeade
 		etherType := data[12:14]
 		etherTypeEncap := []byte{0, 0}
 
-		dstMac = binary.BigEndian.Uint64(append([]byte{0, 0}, data[0:6]...))
-		srcMac = binary.BigEndian.Uint64(append([]byte{0, 0}, data[6:12]...))
-		(*flowMessage).SrcMac = srcMac
-		(*flowMessage).DstMac = dstMac
-
 		encap := true
 		iterations := 0
 		for encap && iterations <= 1 {
 			encap = false
-
-			if etherType[0] == 0x81 && etherType[1] == 0x0 { // VLAN 802.1Q
-				(*flowMessage).VlanId = uint32(binary.BigEndian.Uint16(data[14:16]))
-				offset += 4
-				etherType = data[16:18]
-			}
-
-			if etherType[0] == 0x88 && etherType[1] == 0x47 { // MPLS
-				iterateMpls := true
-				hasMPLS = true
-				for iterateMpls {
-					if len(data) < offset+5 {
-						iterateMpls = false
-						break
-					}
-					label := binary.BigEndian.Uint32(append([]byte{0}, data[offset:offset+3]...)) >> 4
-					//exp := data[offset+2] > 1
-					bottom := data[offset+2] & 1
-					mplsTtl := data[offset+3]
-					offset += 4
-
-					if bottom == 1 || label <= 15 || offset > len(data) {
-						if data[offset]&0xf0>>4 == 4 {
-							etherType = []byte{0x8, 0x0}
-						} else if data[offset]&0xf0>>4 == 6 {
-							etherType = []byte{0x86, 0xdd}
-						}
-						iterateMpls = false
-					}
-
-					if countMpls == 0 {
-						firstLabelMpls = label
-						firstTtlMpls = mplsTtl
-					} else if countMpls == 1 {
-						secondLabelMpls = label
-						secondTtlMpls = mplsTtl
-					} else if countMpls == 2 {
-						thirdLabelMpls = label
-						thirdTtlMpls = mplsTtl
-					} else {
-						lastLabelMpls = label
-						lastTtlMpls = mplsTtl
-					}
-					countMpls++
-				}
-			}
 
 			if etherType[0] == 0x8 && etherType[1] == 0x0 { // IPv4
 				if len(data) >= offset+20 {
@@ -177,16 +110,6 @@ func ParseSampledHeaderConfig(flowMessage *flowmessage.FlowMessage, sampledHeade
 				dstPort = binary.BigEndian.Uint16(data[offset+2 : offset+4])
 			}
 
-			if len(data) >= offset+13 && nextHeader == 6 {
-				tcpflags = data[offset+13]
-			}
-
-			// ICMP and ICMPv6
-			if len(data) >= offset+2 && (nextHeader == 1 || nextHeader == 58) {
-				(*flowMessage).IcmpType = uint32(data[offset+0])
-				(*flowMessage).IcmpCode = uint32(data[offset+1])
-			}
-
 			// GRE
 			if len(data) >= offset+4 && nextHeader == 47 {
 				etherTypeEncap = data[offset+2 : offset+4]
@@ -199,8 +122,6 @@ func ParseSampledHeaderConfig(flowMessage *flowmessage.FlowMessage, sampledHeade
 				if etherTypeEncap[0] == 0x88 && etherTypeEncap[1] == 0x0b && len(data) >= offset+12 {
 					offset += 8
 					encap = true
-					hasPPP = true
-					pppAddressControl = binary.BigEndian.Uint16(data[offset : offset+2])
 					pppEtherType := data[offset+2 : offset+4]
 					if pppEtherType[0] == 0x0 && pppEtherType[1] == 0x21 {
 						etherTypeEncap = []byte{0x8, 0x00}
@@ -267,34 +188,7 @@ func ParseSampledHeaderConfig(flowMessage *flowmessage.FlowMessage, sampledHeade
 			flowLabel = flowLabelTmp
 		}
 
-		(*flowMessage).HasPPP = hasPPP
-		(*flowMessage).PPPAddressControl = uint32(pppAddressControl)
-
-		(*flowMessage).HasMPLS = hasMPLS
-		(*flowMessage).MPLSCount = countMpls
-		(*flowMessage).MPLS1Label = firstLabelMpls
-		(*flowMessage).MPLS1TTL = uint32(firstTtlMpls)
-		(*flowMessage).MPLS2Label = secondLabelMpls
-		(*flowMessage).MPLS2TTL = uint32(secondTtlMpls)
-		(*flowMessage).MPLS3Label = thirdLabelMpls
-		(*flowMessage).MPLS3TTL = uint32(thirdTtlMpls)
-		(*flowMessage).MPLSLastLabel = lastLabelMpls
-		(*flowMessage).MPLSLastTTL = uint32(lastTtlMpls)
-
-		(*flowMessage).HasEncap = hasEncap
-		(*flowMessage).ProtoEncap = uint32(nextHeaderEncap)
-		(*flowMessage).SrcAddrEncap = srcIPEncap
-		(*flowMessage).DstAddrEncap = dstIPEncap
-		(*flowMessage).EtypeEncap = uint32(binary.BigEndian.Uint16(etherTypeEncap[0:2]))
-
-		(*flowMessage).IPTosEncap = uint32(tosEncap)
-		(*flowMessage).IPTTLEncap = uint32(ttlEncap)
-		(*flowMessage).FragmentIdEncap = uint32(identificationEncap)
-		(*flowMessage).FragmentOffsetEncap = uint32(fragOffsetEncap)
-		(*flowMessage).IPv6FlowLabelEncap = flowLabelEncap & 0xFFFFF
-
 		(*flowMessage).Etype = uint32(binary.BigEndian.Uint16(etherType[0:2]))
-		(*flowMessage).IPv6FlowLabel = flowLabel & 0xFFFFF
 
 		(*flowMessage).SrcPort = uint32(srcPort)
 		(*flowMessage).DstPort = uint32(dstPort)
@@ -303,11 +197,6 @@ func ParseSampledHeaderConfig(flowMessage *flowmessage.FlowMessage, sampledHeade
 		(*flowMessage).DstAddr = dstIP
 		(*flowMessage).Proto = uint32(nextHeader)
 		(*flowMessage).IPTos = uint32(tos)
-		(*flowMessage).IPTTL = uint32(ttl)
-		(*flowMessage).TCPFlags = uint32(tcpflags)
-
-		(*flowMessage).FragmentId = uint32(identification)
-		(*flowMessage).FragmentOffset = uint32(fragOffset)
 	}
 	return nil
 }
@@ -328,31 +217,22 @@ func SearchSFlowSamplesConfig(samples []interface{}, config *SFlowProducerConfig
 		switch flowSample := flowSample.(type) {
 		case sflow.FlowSample:
 			records = flowSample.Records
-			flowMessage.SamplingRate = uint64(flowSample.SamplingRate)
-			flowMessage.InIf = flowSample.Input
-			flowMessage.OutIf = flowSample.Output
 		case sflow.ExpandedFlowSample:
 			records = flowSample.Records
-			flowMessage.SamplingRate = uint64(flowSample.SamplingRate)
-			flowMessage.InIf = flowSample.InputIfValue
-			flowMessage.OutIf = flowSample.OutputIfValue
 		}
 
-		ipNh := net.IP{}
 		ipSrc := net.IP{}
 		ipDst := net.IP{}
 		flowMessage.Packets = 1
 		for _, record := range records {
 			switch recordData := record.Data.(type) {
 			case sflow.SampledHeader:
-				flowMessage.Bytes = uint64(recordData.FrameLength)
 				ParseSampledHeaderConfig(flowMessage, &recordData, config)
 			case sflow.SampledIPv4:
 				ipSrc = recordData.Base.SrcIP
 				ipDst = recordData.Base.DstIP
 				flowMessage.SrcAddr = ipSrc
 				flowMessage.DstAddr = ipDst
-				flowMessage.Bytes = uint64(recordData.Base.Length)
 				flowMessage.Proto = recordData.Base.Protocol
 				flowMessage.SrcPort = recordData.Base.SrcPort
 				flowMessage.DstPort = recordData.Base.DstPort
@@ -363,31 +243,15 @@ func SearchSFlowSamplesConfig(samples []interface{}, config *SFlowProducerConfig
 				ipDst = recordData.Base.DstIP
 				flowMessage.SrcAddr = ipSrc
 				flowMessage.DstAddr = ipDst
-				flowMessage.Bytes = uint64(recordData.Base.Length)
 				flowMessage.Proto = recordData.Base.Protocol
 				flowMessage.SrcPort = recordData.Base.SrcPort
 				flowMessage.DstPort = recordData.Base.DstPort
 				flowMessage.IPTos = recordData.Priority
 				flowMessage.Etype = 0x86dd
 			case sflow.ExtendedRouter:
-				ipNh = recordData.NextHop
-				flowMessage.NextHop = ipNh
-				flowMessage.SrcNet = recordData.SrcMaskLen
-				flowMessage.DstNet = recordData.DstMaskLen
+
 			case sflow.ExtendedGateway:
-				ipNh = recordData.NextHop
-				flowMessage.NextHop = ipNh
-				flowMessage.SrcAS = recordData.SrcAS
-				if len(recordData.ASPath) > 0 {
-					flowMessage.DstAS = recordData.ASPath[len(recordData.ASPath)-1]
-					flowMessage.NextHopAS = recordData.ASPath[0]
-					flowMessage.SrcAS = recordData.AS
-				} else {
-					flowMessage.DstAS = recordData.AS
-				}
-			case sflow.ExtendedSwitch:
-				flowMessage.SrcVlan = recordData.SrcVlan
-				flowMessage.DstVlan = recordData.DstVlan
+
 			}
 		}
 		flowMessageSet = append(flowMessageSet, flowMessage)

@@ -20,9 +20,6 @@ func ConvertNetFlowLegacyRecord(baseTime uint32, uptime uint32, record netflowle
 	flowMessage.TimeFlowEnd = uint64(baseTime - timeDiffLast)
 
 	v := make(net.IP, 4)
-	binary.BigEndian.PutUint32(v, record.NextHop)
-	flowMessage.NextHop = v
-	v = make(net.IP, 4)
 	binary.BigEndian.PutUint32(v, record.SrcAddr)
 	flowMessage.SrcAddr = v
 	v = make(net.IP, 4)
@@ -30,19 +27,11 @@ func ConvertNetFlowLegacyRecord(baseTime uint32, uptime uint32, record netflowle
 	flowMessage.DstAddr = v
 
 	flowMessage.Etype = 0x800
-	flowMessage.SrcAS = uint32(record.SrcAS)
-	flowMessage.DstAS = uint32(record.DstAS)
-	flowMessage.SrcNet = uint32(record.SrcMask)
-	flowMessage.DstNet = uint32(record.DstMask)
 	flowMessage.Proto = uint32(record.Proto)
-	flowMessage.TCPFlags = uint32(record.TCPFlags)
 	flowMessage.IPTos = uint32(record.Tos)
-	flowMessage.InIf = uint32(record.Input)
-	flowMessage.OutIf = uint32(record.Output)
 	flowMessage.SrcPort = uint32(record.SrcPort)
 	flowMessage.DstPort = uint32(record.DstPort)
 	flowMessage.Packets = uint64(record.DPkts)
-	flowMessage.Bytes = uint64(record.DOctets)
 
 	return flowMessage
 }
@@ -62,14 +51,12 @@ func ProcessMessageNetFlowLegacy(msgDec interface{}) ([]*flowmessage.FlowMessage
 	switch packet := msgDec.(type) {
 	case netflowlegacy.PacketNetFlowV5:
 		seqnum := packet.FlowSequence
-		samplingRate := packet.SamplingInterval
 		baseTime := packet.UnixSecs
 		uptime := packet.SysUptime
 
 		flowMessageSet := SearchNetFlowLegacyRecords(baseTime, uptime, packet.Records)
 		for _, fmsg := range flowMessageSet {
 			fmsg.SequenceNum = seqnum
-			fmsg.SamplingRate = uint64(samplingRate)
 		}
 
 		return flowMessageSet, nil

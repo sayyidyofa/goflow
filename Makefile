@@ -56,11 +56,9 @@ clean:
 build-goflow: prepare
 	go build -ldflags $(LDFLAGS) -o $(OUTPUT_GOFLOW) cmd/goflow/goflow.go
 
-.PHONY: build-goflow-light
+.PHONY: build-goflow-netflow
 build-goflow-light: prepare
-	go build -ldflags $(LDFLAGS) -o $(OUTPUT_GOFLOW_LIGHT_SFLOW) cmd/csflow/csflow.go
-	go build -ldflags $(LDFLAGS) -o $(OUTPUT_GOFLOW_LIGHT_NF) cmd/cnetflow/cnetflow.go
-	go build -ldflags $(LDFLAGS) -o $(OUTPUT_GOFLOW_LIGHT_NFV5) cmd/cnflegacy/cnflegacy.go
+	/home/yoffa/.go/current/bin/go build -ldflags $(LDFLAGS) -o $(OUTPUT_GOFLOW_LIGHT_NF) cmd/cnetflow/cnetflow.go
 
 .PHONY: docker-goflow
 docker-goflow:
